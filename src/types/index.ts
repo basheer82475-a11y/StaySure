@@ -28,10 +28,12 @@ export interface Pg {
   location: string
   full_address: string | null
   pincode: string | null
+  transport_available: boolean
   nearby_college: string | null
   distance_from_college: string | null
   description: string | null
   contact_number: string | null
+  owner_name: string | null
   status: PgStatus
   created_at: string
   updated_at: string

@@ -16,6 +16,7 @@ export default function AddEditPG() {
   const [location, setLocation] = useState('')
   const [fullAddress, setFullAddress] = useState('')
   const [pincode, setPincode] = useState('')
+  const [transportAvailable, setTransportAvailable] = useState(false)
   const [nearbyCollege, setNearbyCollege] = useState('')
   const [distance, setDistance] = useState('')
   const [description, setDescription] = useState('')
@@ -47,6 +48,7 @@ export default function AddEditPG() {
     if (pg) {
       setName(pg.name); setArea(pg.area); setLocation(pg.location)
       setFullAddress(pg.full_address ?? ''); setPincode(pg.pincode ?? '')
+      setTransportAvailable(pg.transport_available ?? false)
       setNearbyCollege(pg.nearby_college ?? ''); setDistance(pg.distance_from_college ?? '')
       setDescription(pg.description ?? ''); setContact(pg.contact_number ?? '')
     }
@@ -105,16 +107,26 @@ export default function AddEditPG() {
       name, area, location,
       full_address: fullAddress || null,
       pincode: pincode || null,
+      transport_available: transportAvailable,
       nearby_college: nearbyCollege || null,
       distance_from_college: distance || null,
       description: description || null,
       contact_number: contact || null,
+      owner_name: profile!.full_name,
     }
 
     let pgId = id
     if (isEdit && id) {
       const { error: updateError } = await supabase.from('pgs').update(payload).eq('id', id)
-      if (updateError) { setError('Could not save changes.'); setSaving(false); return }
+      if (updateError) {
+        const schemaFields = ['full_address', 'pincode', 'transport_available', 'owner_name']
+        const needsSchemaUpdate = schemaFields.some((field) => updateError.message.toLowerCase().includes(field))
+        setError(needsSchemaUpdate
+          ? 'Your database needs the latest PG fields. Run supabase/schema.sql once in the Supabase SQL Editor, then save again.'
+          : updateError.message || 'Could not save changes. Please try again.')
+        setSaving(false)
+        return
+      }
     } else {
       const { data: newPg, error: insertError } = await supabase
         .from('pgs')
@@ -206,6 +218,10 @@ export default function AddEditPG() {
             <label className="label">Description</label>
             <textarea className="input" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
+          <label className="flex items-center gap-3 text-sm text-ink-700 cursor-pointer">
+            <input type="checkbox" checked={transportAvailable} onChange={(e) => setTransportAvailable(e.target.checked)} className="w-4 h-4 accent-brand-500" />
+            Transport available for students
+          </label>
 
           <div>
             <label className="label">Amenities</label>

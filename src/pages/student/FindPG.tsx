@@ -31,7 +31,9 @@ export default function FindPG() {
       .select('*, pg_images(*), pg_amenities(amenity:amenities(*))')
       .eq('status', 'approved')
 
-    if (area) query = query.ilike('area', `%${area}%`)
+    // A user usually searches a city (for example, "Guntur"), which may be
+    // saved in the full location rather than the smaller area field.
+    if (area) query = query.or(`area.ilike.%${area}%,location.ilike.%${area}%`)
     if (college) query = query.ilike('nearby_college', `%${college}%`)
 
     const { data, error } = await query

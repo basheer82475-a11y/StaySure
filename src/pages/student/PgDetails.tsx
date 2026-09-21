@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { MapPin, BadgeCheck, Phone, MessageCircle, Wifi, Utensils, Shirt, Car, Camera, Zap, Droplet, Sparkles } from 'lucide-react'
+import { MapPin, BadgeCheck, Phone, MessageCircle, Wifi, Utensils, Shirt, Car, Camera, Zap, Droplet, Sparkles, Bus, BedDouble, User } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -72,6 +72,11 @@ export default function PgDetails() {
     floors.forEach((f) => f.rooms.forEach((r) => set.add(r.sharing_type)))
     return Array.from(set).sort()
   }, [floors])
+
+  const availableBeds = useMemo(
+    () => floors.reduce((total, floor) => total + floor.rooms.reduce((roomTotal, room) => roomTotal + room.beds.filter((bed) => bed.status === 'available').length, 0), 0),
+    [floors]
+  )
 
   const filteredFloors = useMemo(() => {
     if (!sharing) return []
@@ -155,6 +160,11 @@ export default function PgDetails() {
           <span className="badge-green shrink-0"><BadgeCheck size={12} /> Verified</span>
         </div>
 
+        <div className={`mt-5 rounded-card p-5 flex items-center gap-4 ${availableBeds > 0 ? 'bg-emerald-50 border border-emerald-100' : 'bg-red-50 border border-red-100'}`}>
+          <div className={`w-11 h-11 rounded-card flex items-center justify-center ${availableBeds > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}><BedDouble size={22} /></div>
+          <div><p className={`text-2xl font-semibold ${availableBeds > 0 ? 'text-emerald-800' : 'text-red-700'}`}>{availableBeds > 0 ? `${availableBeds} seat${availableBeds === 1 ? '' : 's'} available` : 'No seats available'}</p><p className="text-sm text-ink-600 mt-0.5">Live availability across all rooms in this PG.</p></div>
+        </div>
+
         <div className="flex gap-3 mt-4">
           {pg.contact_number && (
             <>
@@ -172,6 +182,15 @@ export default function PgDetails() {
             </>
           )}
         </div>
+
+        <section className="grid sm:grid-cols-2 gap-3 mt-6">
+          <DetailItem icon={<User size={17} />} label="PG owner" value={pg.owner_name || 'Contact the PG for owner details'} />
+          <DetailItem icon={<Phone size={17} />} label="Contact number" value={pg.contact_number || 'Not provided'} />
+          <DetailItem icon={<MapPin size={17} />} label="Full location" value={`${pg.full_address || pg.location}${pg.pincode ? `, ${pg.pincode}` : ''}`} />
+          <DetailItem icon={<Bus size={17} />} label="Transport" value={pg.transport_available ? 'Available' : 'Not available'} />
+          <DetailItem icon={<MapPin size={17} />} label="Distance from college" value={pg.distance_from_college ? `${pg.distance_from_college}${pg.nearby_college ? ` from ${pg.nearby_college}` : ''}` : 'Not provided'} />
+          <DetailItem icon={<BedDouble size={17} />} label="Sharing options" value={availableSharingOptions.length ? availableSharingOptions.map((option) => `${option} sharing`).join(', ') : 'Not added yet'} />
+        </section>
 
         {pg.description && <p className="text-sm text-ink-600 mt-6 leading-relaxed">{pg.description}</p>}
 
@@ -290,4 +309,8 @@ export default function PgDetails() {
       </div>
     </div>
   )
+}
+
+function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return <div className="card p-4 flex gap-3"><span className="text-brand-600 mt-0.5">{icon}</span><div><p className="text-xs text-ink-400">{label}</p><p className="text-sm font-medium text-ink-800 mt-0.5">{value}</p></div></div>
 }

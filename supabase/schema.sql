@@ -58,10 +58,12 @@ create table if not exists pgs (
   location text not null,
   full_address text,
   pincode text,
+  transport_available boolean not null default false,
   nearby_college text,
   distance_from_college text,
   description text,
   contact_number text,
+  owner_name text,
   status pg_status not null default 'pending',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -71,6 +73,8 @@ create table if not exists pgs (
 -- compatible too, without affecting their existing listings.
 alter table pgs add column if not exists full_address text;
 alter table pgs add column if not exists pincode text;
+alter table pgs add column if not exists transport_available boolean not null default false;
+alter table pgs add column if not exists owner_name text;
 
 -- Keep existing installations aligned with the submission-and-approval flow.
 alter table pgs alter column status set default 'pending';
