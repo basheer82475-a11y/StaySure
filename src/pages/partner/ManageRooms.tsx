@@ -45,6 +45,12 @@ export default function ManageRooms() {
     load(pgId)
   }
 
+  async function removeBed(bed: Bed) {
+    if (!pgId || !window.confirm(`Remove ${bed.bed_label}? Any booking request for this bed will also be removed.`)) return
+    await supabase.from('beds').delete().eq('id', bed.id)
+    load(pgId)
+  }
+
   if (loading) {
     return (
       <div>
@@ -59,7 +65,7 @@ export default function ManageRooms() {
       <Navbar />
       <div className="container-page py-8 max-w-3xl">
         <h1 className="text-2xl font-semibold text-ink-900 mb-1">Manage Rooms</h1>
-        <p className="text-sm text-ink-500 mb-6">{pgName}</p>
+        <p className="text-sm text-ink-500 mb-6">{pgName} · Mark a bed Taken when occupied, Available when it is free, or remove it if it no longer exists.</p>
 
         <div className="card p-4 mb-6 flex items-end gap-3">
           <div className="w-32">
@@ -74,7 +80,7 @@ export default function ManageRooms() {
         <div className="space-y-6">
           {floors.map((floor) => (
             <div key={floor.id} className="card p-4">
-              <h3 className="font-medium text-ink-900 mb-3">{floor.label ?? `Floor ${floor.floor_number}`}</h3>
+              <h3 className="font-medium text-ink-900 mb-3">{floor.label ?? `Floor ${floor.floor_number}`}{floor.available_seats !== null && ` · ${floor.available_seats} seats declared available`}</h3>
               <AddRoomForm floorId={floor.id} pgId={pgId!} onAdded={() => load(pgId!)} />
               <div className="space-y-3 mt-4">
                 {floor.rooms.map((room) => (
@@ -87,14 +93,16 @@ export default function ManageRooms() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {room.beds.map((bed) => (
+                        <div key={bed.id} className="flex items-center gap-1">
                         <button
-                          key={bed.id}
                           onClick={() => toggleBed(bed)}
                           className={`btn-sm ${bed.status === 'available' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-                          title="Click to toggle availability"
+                          title="Change availability"
                         >
                           {bed.bed_label} — {bed.status === 'available' ? 'Available' : 'Taken'}
                         </button>
+                        <button onClick={() => removeBed(bed)} className="btn-danger btn-sm" title={`Remove ${bed.bed_label}`}>Remove</button>
+                        </div>
                       ))}
                     </div>
                   </div>

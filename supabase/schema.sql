@@ -102,8 +102,12 @@ create table if not exists floors (
   id uuid primary key default gen_random_uuid(),
   pg_id uuid not null references pgs(id) on delete cascade,
   floor_number int not null,
-  label text
+  label text,
+  available_seats int check (available_seats is null or available_seats >= 0)
 );
+
+-- A partner can provide a floor-wise seat estimate while submitting a PG.
+alter table floors add column if not exists available_seats int check (available_seats is null or available_seats >= 0);
 
 create table if not exists rooms (
   id uuid primary key default gen_random_uuid(),
@@ -285,6 +289,11 @@ drop policy if exists "pgs_update_owner_or_admin" on pgs;
 create policy "pgs_update_owner_or_admin" on pgs for update
   using (owns_pg(id) or is_admin());
 
+drop policy if exists "pgs_delete_admin" on pgs;
+drop policy if exists "pgs_delete_owner_or_admin" on pgs;
+create policy "pgs_delete_owner_or_admin" on pgs for delete
+  using (owns_pg(id) or is_admin());
+
 -- pg_images / pg_amenities / floors / rooms / beds share the same visibility rule:
 -- visible if the parent PG is approved, or owned by the requesting partner, or admin.
 
@@ -357,6 +366,7 @@ returns bed_requests language plpgsql security definer set search_path = public 
 declare
   v_room_id uuid;
   v_pg_id uuid;
+  v_partner_profile_id uuid;
   v_status bed_status;
   v_request bed_requests;
 begin
@@ -378,6 +388,12 @@ begin
   insert into bed_requests (student_id, pg_id, room_id, bed_id, status)
   values (auth.uid(), v_pg_id, v_room_id, p_bed_id, 'pending')
   returning * into v_request;
+
+  select pg_partners.profile_id into v_partner_profile_id
+    from pgs join pg_partners on pg_partners.id = pgs.partner_id
+    where pgs.id = v_pg_id;
+  insert into notifications (profile_id, message)
+  values (v_partner_profile_id, 'You have a new bed booking request. Review it in Booking Requests.');
 
   return v_request;
 end; $$;

@@ -57,6 +57,7 @@ export interface Floor {
   pg_id: string
   floor_number: number
   label: string | null
+  available_seats: number | null
 }
 
 export type SharingType = 1 | 2 | 3 | 4 | 5

@@ -5,6 +5,8 @@ import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Amenity, PgImage } from '@/types'
 
+type FloorSeatEntry = { floorNumber: string; seats: string }
+
 export default function AddEditPG() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
@@ -21,6 +23,8 @@ export default function AddEditPG() {
   const [distance, setDistance] = useState('')
   const [description, setDescription] = useState('')
   const [contact, setContact] = useState('')
+  const [ownerName, setOwnerName] = useState('')
+  const [floorSeats, setFloorSeats] = useState<FloorSeatEntry[]>([{ floorNumber: '1', seats: '' }])
 
   const [allAmenities, setAllAmenities] = useState<Amenity[]>([])
   const [selectedAmenities, setSelectedAmenities] = useState<Set<string>>(new Set())
@@ -50,7 +54,7 @@ export default function AddEditPG() {
       setFullAddress(pg.full_address ?? ''); setPincode(pg.pincode ?? '')
       setTransportAvailable(pg.transport_available ?? false)
       setNearbyCollege(pg.nearby_college ?? ''); setDistance(pg.distance_from_college ?? '')
-      setDescription(pg.description ?? ''); setContact(pg.contact_number ?? '')
+      setDescription(pg.description ?? ''); setContact(pg.contact_number ?? ''); setOwnerName(pg.owner_name ?? '')
     }
     const { data: amenityRows } = await supabase.from('pg_amenities').select('amenity_id').eq('pg_id', pgId)
     setSelectedAmenities(new Set((amenityRows ?? []).map((r) => r.amenity_id)))
@@ -66,6 +70,10 @@ export default function AddEditPG() {
       else next.add(amenityId)
       return next
     })
+  }
+
+  function updateFloorSeat(index: number, field: keyof FloorSeatEntry, value: string) {
+    setFloorSeats((entries) => entries.map((entry, entryIndex) => entryIndex === index ? { ...entry, [field]: value } : entry))
   }
 
   async function handleImageUpload(file: File, pgId: string) {
@@ -90,8 +98,14 @@ export default function AddEditPG() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!name || !area || !location) {
-      setError('PG name, area, and location are required.')
+    const validFloorSeats = floorSeats.filter(({ floorNumber, seats }) => floorNumber !== '' || seats !== '')
+    const floorNumbers = validFloorSeats.map(({ floorNumber }) => Number(floorNumber))
+    if (!name || !area || !location || !ownerName) {
+      setError('PG name, owner name, area, and location are required.')
+      return
+    }
+    if (validFloorSeats.some(({ floorNumber, seats }) => !floorNumber || seats === '' || !Number.isInteger(Number(floorNumber)) || Number(floorNumber) < 1 || !Number.isInteger(Number(seats)) || Number(seats) < 0) || new Set(floorNumbers).size !== floorNumbers.length) {
+      setError('Enter a unique floor number and a zero or greater seat count for every floor.')
       return
     }
     setSaving(true)
@@ -112,7 +126,7 @@ export default function AddEditPG() {
       distance_from_college: distance || null,
       description: description || null,
       contact_number: contact || null,
-      owner_name: profile!.full_name,
+      owner_name: ownerName,
     }
 
     let pgId = id
@@ -142,6 +156,21 @@ export default function AddEditPG() {
         return
       }
       pgId = newPg.id
+      if (validFloorSeats.length > 0) {
+        const { error: floorError } = await supabase.from('floors').insert(validFloorSeats.map(({ floorNumber, seats }) => ({
+          pg_id: newPg.id,
+          floor_number: Number(floorNumber),
+          label: `Floor ${floorNumber}`,
+          available_seats: Number(seats),
+        })))
+        if (floorError) {
+          setError(floorError.message.includes('available_seats')
+            ? 'Your database needs the latest floor availability field. Run supabase/schema.sql once in the Supabase SQL Editor, then save again.'
+            : floorError.message || 'PG was created, but the floor seat details could not be saved.')
+          setSaving(false)
+          return
+        }
+      }
       if (newImage) await handleImageUpload(newImage, newPg.id)
     }
 
@@ -191,6 +220,10 @@ export default function AddEditPG() {
             </div>
           </div>
           <div>
+            <label className="label">PG owner name</label>
+            <input className="input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="e.g. Lakshmi Devi" required />
+          </div>
+          <div>
             <label className="label">Full address</label>
             <textarea className="input" rows={2} value={fullAddress} onChange={(e) => setFullAddress(e.target.value)} placeholder="Building / street, landmark, city" required />
           </div>
@@ -222,6 +255,27 @@ export default function AddEditPG() {
             <input type="checkbox" checked={transportAvailable} onChange={(e) => setTransportAvailable(e.target.checked)} className="w-4 h-4 accent-brand-500" />
             Transport available for students
           </label>
+
+          {!isEdit && <div>
+            <label className="label">Seats available by floor</label>
+            <p className="text-xs text-ink-500 mb-3">Add each floor and the number of seats currently available there.</p>
+            <div className="space-y-2">
+              {floorSeats.map((entry, index) => (
+                <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                  <div>
+                    <label className="label text-xs">Floor</label>
+                    <input className="input" type="number" min={1} value={entry.floorNumber} onChange={(e) => updateFloorSeat(index, 'floorNumber', e.target.value)} placeholder="1" />
+                  </div>
+                  <div>
+                    <label className="label text-xs">Available seats</label>
+                    <input className="input" type="number" min={0} value={entry.seats} onChange={(e) => updateFloorSeat(index, 'seats', e.target.value)} placeholder="e.g. 12" />
+                  </div>
+                  <button type="button" className="btn-secondary btn-sm mb-0.5" onClick={() => setFloorSeats((entries) => entries.filter((_, entryIndex) => entryIndex !== index))} disabled={floorSeats.length === 1}>Remove</button>
+                </div>
+              ))}
+            </div>
+            <button type="button" className="btn-secondary btn-sm mt-3" onClick={() => setFloorSeats((entries) => [...entries, { floorNumber: String(entries.length + 1), seats: '' }])}>Add floor</button>
+          </div>}
 
           <div>
             <label className="label">Amenities</label>

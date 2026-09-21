@@ -11,6 +11,8 @@ export default function PartnerPGs() {
   const { profile } = useAuth()
   const [pgs, setPgs] = useState<Pg[]>([])
   const [loading, setLoading] = useState(true)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (profile) load()
@@ -26,6 +28,19 @@ export default function PartnerPGs() {
     setLoading(false)
   }
 
+  async function removePg(pg: Pg) {
+    if (!window.confirm(`Remove ${pg.name}? This permanently removes its floors, rooms, beds, and booking requests.`)) return
+    setRemovingId(pg.id)
+    setError(null)
+    const { data, error: deleteError } = await supabase.from('pgs').delete().eq('id', pg.id).select('id')
+    setRemovingId(null)
+    if (deleteError || !data?.length) {
+      setError(deleteError?.message || 'This PG could not be removed because your database does not yet allow partner deletes. Run the latest supabase/schema.sql in Supabase SQL Editor, then try again.')
+      return
+    }
+    load()
+  }
+
   return (
     <div>
       <Navbar />
@@ -36,6 +51,7 @@ export default function PartnerPGs() {
         </div>
 
         {loading && <p className="text-sm text-ink-400">Loading...</p>}
+        {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
         {!loading && pgs.length === 0 && (
           <div className="card p-10 text-center">
@@ -55,6 +71,7 @@ export default function PartnerPGs() {
                 <StatusBadge status={pg.status} />
                 <Link to={`/partner/pgs/${pg.id}/rooms`} className="btn-secondary btn-sm"><DoorOpen size={14} /> Rooms</Link>
                 <Link to={`/partner/pgs/${pg.id}/edit`} className="btn-secondary btn-sm">Edit</Link>
+                <button onClick={() => removePg(pg)} disabled={removingId === pg.id} className="btn-danger btn-sm">{removingId === pg.id ? 'Removing...' : 'Remove'}</button>
               </div>
             </div>
           ))}

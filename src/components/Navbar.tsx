@@ -26,7 +26,12 @@ export default function Navbar() {
 
         <nav className="hidden md:flex items-center gap-8 text-sm text-ink-600">
           {profile?.role === 'admin' ? (
-            <Link to="/admin/dashboard" className="hover:text-ink-900">Dashboard</Link>
+            <>
+              <Link to="/admin/dashboard" className="hover:text-ink-900">Dashboard</Link>
+              <Link to="/admin/pgs" className="hover:text-ink-900">PG Management</Link>
+              <Link to="/admin/requests" className="hover:text-ink-900">Bed Requests</Link>
+              <Link to="/admin/users" className="hover:text-ink-900">Users</Link>
+            </>
           ) : (
             <>
               <Link to="/" className="hover:text-ink-900">Home</Link>

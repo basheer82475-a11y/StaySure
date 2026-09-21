@@ -74,7 +74,9 @@ export default function PgDetails() {
   }, [floors])
 
   const availableBeds = useMemo(
-    () => floors.reduce((total, floor) => total + floor.rooms.reduce((roomTotal, room) => roomTotal + room.beds.filter((bed) => bed.status === 'available').length, 0), 0),
+    () => floors.reduce((total, floor) => total + (floor.rooms.length > 0
+      ? floor.rooms.reduce((roomTotal, room) => roomTotal + room.beds.filter((bed) => bed.status === 'available').length, 0)
+      : (floor.available_seats ?? 0)), 0),
     [floors]
   )
 
@@ -165,6 +167,14 @@ export default function PgDetails() {
           <div><p className={`text-2xl font-semibold ${availableBeds > 0 ? 'text-emerald-800' : 'text-red-700'}`}>{availableBeds > 0 ? `${availableBeds} seat${availableBeds === 1 ? '' : 's'} available` : 'No seats available'}</p><p className="text-sm text-ink-600 mt-0.5">Live availability across all rooms in this PG.</p></div>
         </div>
 
+        {floors.some((floor) => floor.rooms.length === 0 && floor.available_seats !== null) && (
+          <div className="mt-3 flex flex-wrap gap-2 text-sm">
+            {floors.filter((floor) => floor.rooms.length === 0 && floor.available_seats !== null).map((floor) => (
+              <span key={floor.id} className="badge-green">{floor.label ?? `Floor ${floor.floor_number}`}: {floor.available_seats} seats</span>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-3 mt-4">
           {pg.contact_number && (
             <>
@@ -192,7 +202,12 @@ export default function PgDetails() {
           <DetailItem icon={<BedDouble size={17} />} label="Sharing options" value={availableSharingOptions.length ? availableSharingOptions.map((option) => `${option} sharing`).join(', ') : 'Not added yet'} />
         </section>
 
-        {pg.description && <p className="text-sm text-ink-600 mt-6 leading-relaxed">{pg.description}</p>}
+        <section className="mt-6">
+          <h2 className="font-medium text-ink-900 mb-2">About this PG</h2>
+          {pg.description && <p className="text-sm text-ink-600 leading-relaxed">{pg.description}</p>}
+          <p className="text-sm text-ink-600 mt-2">Managed by {pg.owner_name || 'the PG owner'}.</p>
+          {floors.length > 0 && <p className="text-sm text-ink-600 mt-1">Floor availability: {floors.map((floor) => `${floor.label ?? `Floor ${floor.floor_number}`} — ${floor.rooms.length > 0 ? floor.rooms.reduce((total, room) => total + room.beds.filter((bed) => bed.status === 'available').length, 0) : (floor.available_seats ?? 0)} seats`).join(', ')}.</p>}
+        </section>
 
         {amenities.length > 0 && (
           <div className="mt-6">
