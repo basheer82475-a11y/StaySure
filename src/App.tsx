@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import IntroSplash from '@/components/IntroSplash'
 
 import Landing from '@/pages/Landing'
 import Login from '@/pages/Login'
@@ -23,7 +24,9 @@ import AdminRequests from '@/pages/admin/AdminRequests'
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <IntroSplash />
+      <Routes>
       {/* Public */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
@@ -135,6 +138,7 @@ export default function App() {
       />
 
       <Route path="*" element={<Landing />} />
-    </Routes>
+      </Routes>
+    </>
   )
 }

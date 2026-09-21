@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Home, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import staysureLogo from '@/assets/staysure-logo.png'
 
 type NavItem = { label: string; to: string }
 
@@ -36,8 +37,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-30 border-b border-brand-100/80 bg-white/95 shadow-[0_1px_0_rgba(23,51,46,0.03)] backdrop-blur-xl">
       <div className="container-page flex h-[76px] items-center justify-between gap-4">
         <Link to="/" onClick={closeMenu} className="group flex shrink-0 items-center gap-2.5 text-lg font-semibold tracking-tight text-ink-900">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-[0_6px_16px_rgba(41,100,87,0.28)] transition-transform duration-200 group-hover:-rotate-3 group-hover:scale-105">
-            <Home size={19} strokeWidth={2.3} />
+          <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white shadow-[0_6px_16px_rgba(41,100,87,0.28)] transition-transform duration-200 group-hover:-rotate-3 group-hover:scale-105">
+            <img src={staysureLogo} alt="StaySure" className="absolute left-1/2 top-0 w-20 max-w-none -translate-x-1/2 animate-logo-float" />
           </span>
           <span>Stay<span className="text-brand-600">Sure</span></span>
         </Link>
