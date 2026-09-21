@@ -93,6 +93,16 @@ export interface BedRequest {
   updated_at: string
 }
 
+export interface PgReview {
+  id: string
+  pg_id: string
+  student_id: string
+  rating: number
+  comment: string
+  created_at: string
+  updated_at: string
+}
+
 // Convenience joined shapes used by the UI
 export interface PgWithExtras extends Pg {
   pg_images: PgImage[]

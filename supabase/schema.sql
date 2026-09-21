@@ -7,6 +7,15 @@
 -- ---------- Extensions ----------
 create extension if not exists "pgcrypto";
 
+-- ---------- Storage ----------
+-- Creates the public bucket used by partner PG photo uploads. Safe to re-run.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('pg-images', 'pg-images', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 -- ---------- Enums ----------
 do $$ begin
   create type user_role as enum ('student', 'partner', 'admin');
@@ -149,12 +158,25 @@ create table if not exists notifications (
   created_at timestamptz not null default now()
 );
 
+-- One review per student per PG. Students can update their own rating/comment.
+create table if not exists pg_reviews (
+  id uuid primary key default gen_random_uuid(),
+  pg_id uuid not null references pgs(id) on delete cascade,
+  student_id uuid not null references profiles(id) on delete cascade,
+  rating smallint not null check (rating between 1 and 5),
+  comment text not null check (char_length(trim(comment)) between 1 and 1000),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (pg_id, student_id)
+);
+
 create index if not exists idx_pgs_status on pgs(status);
 create index if not exists idx_pgs_partner on pgs(partner_id);
 create index if not exists idx_rooms_pg on rooms(pg_id);
 create index if not exists idx_beds_room on beds(room_id);
 create index if not exists idx_bed_requests_student on bed_requests(student_id);
 create index if not exists idx_bed_requests_pg on bed_requests(pg_id);
+create index if not exists idx_pg_reviews_pg on pg_reviews(pg_id, created_at desc);
 
 -- ---------- updated_at trigger helper ----------
 create or replace function set_updated_at()
@@ -174,6 +196,10 @@ create trigger trg_pgs_updated_at before update on pgs
 
 drop trigger if exists trg_bed_requests_updated_at on bed_requests;
 create trigger trg_bed_requests_updated_at before update on bed_requests
+  for each row execute function set_updated_at();
+
+drop trigger if exists trg_pg_reviews_updated_at on pg_reviews;
+create trigger trg_pg_reviews_updated_at before update on pg_reviews
   for each row execute function set_updated_at();
 
 -- ---------- New-user trigger: auto-create profile (+ partner row) on signup ----------
@@ -228,6 +254,13 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- Storage objects: uploaded images are public to view, while only partner
+-- accounts can add files. The PG-specific database policies still control
+-- which image URLs are attached to a listing.
+drop policy if exists "pg_images_partner_upload" on storage.objects;
+create policy "pg_images_partner_upload" on storage.objects for insert to authenticated
+  with check (bucket_id = 'pg-images' and auth_role() = 'partner');
+
 -- ============================================================================
 -- Row Level Security
 -- ============================================================================
@@ -243,6 +276,7 @@ alter table rooms enable row level security;
 alter table beds enable row level security;
 alter table bed_requests enable row level security;
 alter table notifications enable row level security;
+alter table pg_reviews enable row level security;
 
 -- profiles
 drop policy if exists "profiles_select_own_or_admin" on profiles;
@@ -354,6 +388,24 @@ drop policy if exists "notifications_select_own" on notifications;
 create policy "notifications_select_own" on notifications for select using (profile_id = auth.uid());
 drop policy if exists "notifications_update_own" on notifications;
 create policy "notifications_update_own" on notifications for update using (profile_id = auth.uid());
+
+-- Reviews: published PG reviews are public; students can only create or edit their own review.
+drop policy if exists "pg_reviews_select_visible" on pg_reviews;
+create policy "pg_reviews_select_visible" on pg_reviews for select
+  using (exists (select 1 from pgs where pgs.id = pg_reviews.pg_id and (pgs.status = 'approved' or owns_pg(pgs.id) or is_admin())));
+
+drop policy if exists "pg_reviews_insert_own_student" on pg_reviews;
+create policy "pg_reviews_insert_own_student" on pg_reviews for insert
+  with check (student_id = auth.uid() and auth_role() = 'student');
+
+drop policy if exists "pg_reviews_update_own_student" on pg_reviews;
+create policy "pg_reviews_update_own_student" on pg_reviews for update
+  using (student_id = auth.uid() and auth_role() = 'student')
+  with check (student_id = auth.uid() and auth_role() = 'student');
+
+drop policy if exists "pg_reviews_delete_own_or_admin" on pg_reviews;
+create policy "pg_reviews_delete_own_or_admin" on pg_reviews for delete
+  using (student_id = auth.uid() or is_admin());
 
 -- ============================================================================
 -- Booking logic as RPC functions (SECURITY DEFINER) — this is what prevents

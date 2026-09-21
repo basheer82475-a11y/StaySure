@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { MapPin, BadgeCheck, Phone, MessageCircle, Wifi, Utensils, Shirt, Car, Camera, Zap, Droplet, Sparkles, Bus, BedDouble, User } from 'lucide-react'
+import { MapPin, BadgeCheck, Phone, MessageCircle, Wifi, Utensils, Shirt, Car, Camera, Zap, Droplet, Sparkles, Bus, BedDouble, Star, User } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { Amenity, Bed, Floor, Pg, PgImage, Room } from '@/types'
+import { Amenity, Bed, Floor, Pg, PgImage, PgReview, Room } from '@/types'
 
 const amenityIcons: Record<string, React.ReactNode> = {
   wifi: <Wifi size={16} />,
@@ -26,6 +26,7 @@ export default function PgDetails() {
 
   const [pg, setPg] = useState<Pg | null>(null)
   const [images, setImages] = useState<PgImage[]>([])
+  const [showAllImages, setShowAllImages] = useState(false)
   const [amenities, setAmenities] = useState<Amenity[]>([])
   const [floors, setFloors] = useState<FloorWithRooms[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,6 +38,11 @@ export default function PgDetails() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
+  const [reviews, setReviews] = useState<PgReview[]>([])
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [savingReview, setSavingReview] = useState(false)
+  const [reviewError, setReviewError] = useState<string | null>(null)
 
   useEffect(() => {
     if (id) loadPg(id)
@@ -55,15 +61,24 @@ export default function PgDetails() {
     }
     setPg(pgData as Pg)
 
-    const [{ data: imgData }, { data: amenityData }, { data: floorData }] = await Promise.all([
+    const [{ data: imgData }, { data: amenityData }, { data: floorData }, { data: reviewData }] = await Promise.all([
       supabase.from('pg_images').select('*').eq('pg_id', pgId).order('sort_order'),
       supabase.from('pg_amenities').select('amenity:amenities(*)').eq('pg_id', pgId),
       supabase.from('floors').select('*, rooms(*, beds(*))').eq('pg_id', pgId).order('floor_number'),
+      supabase.from('pg_reviews').select('*').eq('pg_id', pgId).order('created_at', { ascending: false }),
     ])
 
     setImages((imgData ?? []) as PgImage[])
+    if (window.location.hash === '#gallery') setShowAllImages(true)
     setAmenities(((amenityData ?? []) as unknown as { amenity: Amenity }[]).map((a) => a.amenity))
     setFloors((floorData ?? []) as unknown as FloorWithRooms[])
+    const loadedReviews = (reviewData ?? []) as PgReview[]
+    setReviews(loadedReviews)
+    const ownReview = loadedReviews.find((review) => review.student_id === profile?.id)
+    if (ownReview) {
+      setReviewRating(ownReview.rating)
+      setReviewComment(ownReview.comment)
+    }
     setLoading(false)
   }
 
@@ -118,6 +133,36 @@ export default function PgDetails() {
     setSubmitted(true)
   }
 
+  async function handleReviewSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!session || !profile) {
+      navigate('/login', { state: { from: `/pg/${id}` } })
+      return
+    }
+    if (profile.role !== 'student') {
+      setReviewError('Only student accounts can write reviews.')
+      return
+    }
+    if (!id || reviewRating === 0 || !reviewComment.trim()) {
+      setReviewError('Choose a star rating and write a short comment.')
+      return
+    }
+    setSavingReview(true)
+    setReviewError(null)
+    const { error: saveError } = await supabase.from('pg_reviews').upsert(
+      { pg_id: id, student_id: profile.id, rating: reviewRating, comment: reviewComment.trim() },
+      { onConflict: 'pg_id,student_id' }
+    )
+    setSavingReview(false)
+    if (saveError) {
+      setReviewError('Could not save your review. Please try again.')
+      return
+    }
+    loadPg(id)
+  }
+
+  const averageRating = reviews.length ? reviews.reduce((total, review) => total + review.rating, 0) / reviews.length : 0
+
   if (loading) {
     return (
       <div>
@@ -141,15 +186,20 @@ export default function PgDetails() {
       <Navbar />
       <div className="container-page py-8 max-w-4xl">
         {/* Gallery */}
-        <div className="grid grid-cols-3 gap-2 mb-6 rounded-card overflow-hidden">
+        <div id="gallery" className="grid grid-cols-3 gap-2 mb-6 rounded-card overflow-hidden">
           {images.length > 0 ? (
-            images.slice(0, 3).map((img, i) => (
+            (showAllImages ? images : images.slice(0, 3)).map((img, i) => (
               <img key={img.id} src={img.url} className={`w-full h-48 object-cover ${i === 0 ? 'col-span-3 sm:col-span-1' : ''}`} />
             ))
           ) : (
             <div className="col-span-3 h-48 bg-ink-100 flex items-center justify-center text-ink-300 text-sm">No images</div>
           )}
         </div>
+        {images.length > 3 && (
+          <button type="button" onClick={() => setShowAllImages((shown) => !shown)} className="btn-secondary btn-sm mb-6">
+            {showAllImages ? 'Show fewer photos' : `Show all ${images.length} photos`}
+          </button>
+        )}
 
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -221,6 +271,49 @@ export default function PgDetails() {
             </div>
           </div>
         )}
+
+        <section className="mt-8 border-t border-ink-100 pt-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-ink-900">Student reviews</h2>
+              <p className="mt-1 text-sm text-ink-500">Honest feedback from students who explored this PG.</p>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl bg-brand-50 px-3 py-2 text-brand-800">
+              <Star size={18} className="fill-amber-400 text-amber-400" />
+              <span className="font-semibold">{averageRating ? averageRating.toFixed(1) : 'New'}</span>
+              <span className="text-xs text-brand-700">{reviews.length ? `(${reviews.length} review${reviews.length === 1 ? '' : 's'})` : 'No reviews yet'}</span>
+            </div>
+          </div>
+
+          {session && profile?.role === 'student' ? (
+            <form onSubmit={handleReviewSubmit} className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4 sm:p-5">
+              <p className="text-sm font-semibold text-ink-800">Share your experience</p>
+              <div className="mt-3 flex items-center gap-1" aria-label="Choose a star rating">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button key={star} type="button" onClick={() => setReviewRating(star)} className="rounded p-1 text-ink-300 transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-brand-400" aria-label={`${star} star${star === 1 ? '' : 's'}`}>
+                    <Star size={24} className={star <= reviewRating ? 'fill-amber-400 text-amber-400' : ''} />
+                  </button>
+                ))}
+                <span className="ml-2 text-xs text-ink-500">{reviewRating ? `${reviewRating} out of 5` : 'Select rating'}</span>
+              </div>
+              <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} maxLength={1000} rows={3} className="input mt-3 resize-y" placeholder="What did you like about this PG?" />
+              {reviewError && <p className="mt-2 text-sm text-red-600">{reviewError}</p>}
+              <button type="submit" disabled={savingReview} className="btn-primary mt-3 rounded-lg">{savingReview ? 'Saving...' : reviews.some((review) => review.student_id === profile.id) ? 'Update review' : 'Post review'}</button>
+            </form>
+          ) : (
+            <p className="mt-5 rounded-xl bg-ink-50 px-4 py-3 text-sm text-ink-600">Sign in with a student account to leave a rating and review.</p>
+          )}
+
+          <div className="mt-6 space-y-3">
+            {reviews.length ? reviews.map((review) => (
+              <article key={review.id} className="rounded-xl border border-ink-100 bg-white p-4">
+                <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-1 text-amber-500">{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={15} className={star <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-ink-200'} />)}</div><time className="text-xs text-ink-400">{new Date(review.created_at).toLocaleDateString()}</time></div>
+                <p className="mt-3 text-sm leading-6 text-ink-700">{review.comment}</p>
+                <p className="mt-2 text-xs font-medium text-ink-400">Student review</p>
+              </article>
+            )) : <p className="py-4 text-sm text-ink-500">No reviews yet. Be the first to share your experience.</p>}
+          </div>
+        </section>
 
         {/* Choose your stay */}
         <div className="mt-10 border-t border-ink-100 pt-8">

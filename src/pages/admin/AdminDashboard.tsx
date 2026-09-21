@@ -50,12 +50,12 @@ export default function AdminDashboard() {
     load()
   }
 
-  return <div>
+  return <div className="min-h-full bg-[#fcfdfb]">
     <Navbar />
     <main className="container-page py-8 sm:py-10">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-8">
-        <div><p className="text-sm font-medium text-brand-600">Administration</p><h1 className="text-3xl font-semibold tracking-tight text-ink-900">Dashboard overview</h1><p className="text-sm text-ink-500 mt-1">Accounts, PG listings, and booking activity at a glance.</p></div>
-        <Link to="/admin/users" className="btn-secondary btn-sm w-fit">Manage users <ArrowRight size={15} /></Link>
+      <div className="mb-8 flex flex-col gap-5 rounded-2xl border border-brand-100 bg-white p-6 shadow-card sm:flex-row sm:items-end sm:justify-between sm:p-7">
+        <div><p className="text-sm font-semibold text-brand-600">Administration</p><h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink-900">Dashboard overview</h1><p className="mt-2 text-sm text-ink-500">Accounts, PG listings, and booking activity at a glance.</p></div>
+        <Link to="/admin/users" className="btn-secondary btn-sm w-fit rounded-lg">Manage users <ArrowRight size={15} /></Link>
       </div>
 
       {loading ? <p className="text-sm text-ink-400">Loading dashboard data...</p> : <>

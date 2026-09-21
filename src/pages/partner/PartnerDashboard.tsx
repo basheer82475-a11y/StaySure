@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, BedDouble, Users, Clock, Bell } from 'lucide-react'
+import { ArrowRight, BedDouble, Bell, Building2, Clock, Plus, Users } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -50,18 +50,25 @@ export default function PartnerDashboard() {
   }
 
   return (
-    <div>
+    <div className="min-h-full bg-[#fcfdfb]">
       <Navbar />
-      <div className="container-page py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-ink-900">Partner Dashboard</h1>
-          <Link to="/partner/pgs" className="btn-primary btn-sm">Manage My PGs</Link>
+      <main className="container-page py-8 sm:py-10">
+        <div className="relative overflow-hidden rounded-2xl bg-brand-900 px-6 py-7 shadow-[0_16px_38px_rgba(23,51,46,0.18)] sm:px-8 sm:py-9">
+          <div className="absolute -right-16 -top-20 h-52 w-52 rounded-full bg-brand-300/20 blur-2xl" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-brand-200">Partner workspace</p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-white">Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}.</h1>
+              <p className="mt-2 max-w-xl text-sm text-brand-50/80">Keep your listings current, monitor beds, and respond to students from one place.</p>
+            </div>
+            <Link to="/partner/pgs/new" className="btn shrink-0 rounded-xl bg-white text-brand-800 hover:bg-brand-50"><Plus size={16} /> Add a PG</Link>
+          </div>
         </div>
 
         {loading ? (
-          <p className="text-sm text-ink-400">Loading stats...</p>
+          <p className="py-8 text-sm text-ink-400">Loading your workspace...</p>
         ) : (
-          <div className="grid sm:grid-cols-4 gap-4 mb-8">
+          <div className="grid gap-4 py-6 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={<Building2 size={18} />} label="Total PGs" value={stats.totalPgs} />
             <StatCard icon={<BedDouble size={18} />} label="Available Beds" value={stats.available} />
             <StatCard icon={<Users size={18} />} label="Occupied Beds" value={stats.occupied} />
@@ -69,31 +76,34 @@ export default function PartnerDashboard() {
           </div>
         )}
 
-        <div className="card p-5 mb-5">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2"><Bell size={18} className="text-brand-600" /><h2 className="font-semibold text-ink-900">Booking Requests</h2></div>
-            <Link to="/partner/requests" className="text-sm text-brand-600 hover:underline">View all</Link>
-          </div>
-          {stats.pending > 0 ? <p className="text-sm text-ink-600">You have <strong>{stats.pending}</strong> pending booking request{stats.pending === 1 ? '' : 's'} waiting for your response.</p> : <p className="text-sm text-ink-500">No pending booking requests.</p>}
-          {notifications.length > 0 && <div className="mt-3 space-y-2">{notifications.map((notification) => <div key={notification.id} className={`text-sm rounded-card px-3 py-2 ${notification.read ? 'bg-ink-50 text-ink-600' : 'bg-brand-50 text-ink-800'}`}>{notification.message}<span className="text-xs text-ink-400 ml-2">{new Date(notification.created_at).toLocaleString()}</span></div>)}</div>}
-        </div>
+        <div className="grid gap-5 lg:grid-cols-5">
+          <section className="card border-brand-100 p-6 lg:col-span-3">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><Bell size={18} /></span><div><h2 className="font-semibold text-ink-900">Booking requests</h2><p className="text-xs text-ink-500">Stay on top of student enquiries.</p></div></div>
+              <Link to="/partner/requests" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-900">View all <ArrowRight size={15} /></Link>
+            </div>
+            {stats.pending > 0 ? <p className="text-sm text-ink-600">You have <strong>{stats.pending}</strong> pending booking request{stats.pending === 1 ? '' : 's'} waiting for your response.</p> : <p className="text-sm text-ink-500">No pending booking requests.</p>}
+          {notifications.length > 0 && <div className="mt-4 space-y-2">{notifications.map((notification) => <div key={notification.id} className={`rounded-xl px-3.5 py-3 text-sm ${notification.read ? 'bg-ink-50 text-ink-600' : 'bg-brand-50 text-ink-800'}`}><p>{notification.message}</p><span className="mt-1 block text-xs text-ink-400">{new Date(notification.created_at).toLocaleString()}</span></div>)}</div>}
+          </section>
 
-        <div className="card p-5">
-          <p className="text-sm text-ink-600">
-            Manage your PG listings, update room and bed availability, and respond to student requests from the links above.
-          </p>
+          <aside className="rounded-2xl border border-brand-100 bg-brand-50/70 p-6 lg:col-span-2">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-600">Quick action</p>
+            <h2 className="mt-2 text-lg font-semibold text-ink-900">Keep availability accurate</h2>
+            <p className="mt-2 text-sm leading-6 text-ink-600">Update rooms and beds whenever occupancy changes so students always see the latest options.</p>
+            <Link to="/partner/pgs" className="btn-primary mt-5 rounded-xl">Manage my PGs <ArrowRight size={16} /></Link>
+          </aside>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
 
 function StatCard({ icon, label, value, link }: { icon: React.ReactNode; label: string; value: number; link?: string }) {
   const content = (
-    <div className="card p-4">
-      <div className="w-9 h-9 rounded-card bg-brand-50 text-brand-600 flex items-center justify-center mb-3">{icon}</div>
-      <p className="text-2xl font-semibold text-ink-900">{value}</p>
-      <p className="text-sm text-ink-500">{label}</p>
+    <div className="card border-ink-100 p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(28,63,56,0.11)]">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">{icon}</div>
+      <p className="text-3xl font-semibold tracking-tight text-ink-900">{value}</p>
+      <p className="mt-1 text-sm font-medium text-ink-600">{label}</p>
     </div>
   )
   return link ? <Link to={link}>{content}</Link> : content

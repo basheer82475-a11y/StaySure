@@ -24,12 +24,12 @@ export default function AddEditPG() {
   const [description, setDescription] = useState('')
   const [contact, setContact] = useState('')
   const [ownerName, setOwnerName] = useState('')
-  const [floorSeats, setFloorSeats] = useState<FloorSeatEntry[]>([{ floorNumber: '1', seats: '' }])
+  const [floorSeats, setFloorSeats] = useState<FloorSeatEntry[]>([])
 
   const [allAmenities, setAllAmenities] = useState<Amenity[]>([])
   const [selectedAmenities, setSelectedAmenities] = useState<Set<string>>(new Set())
   const [images, setImages] = useState<PgImage[]>([])
-  const [newImage, setNewImage] = useState<File | null>(null)
+  const [newImages, setNewImages] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
 
   const [saving, setSaving] = useState(false)
@@ -76,29 +76,44 @@ export default function AddEditPG() {
     setFloorSeats((entries) => entries.map((entry, entryIndex) => entryIndex === index ? { ...entry, [field]: value } : entry))
   }
 
-  async function handleImageUpload(file: File, pgId: string) {
+  async function handleImageUpload(file: File, pgId: string, sortOrder = images.length): Promise<boolean> {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Please upload a JPG, PNG, or WebP image.')
+      return false
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be 5 MB or smaller.')
+      return false
+    }
     setUploading(true)
-    const path = `${pgId}/${Date.now()}-${file.name}`
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-')
+    const path = `${pgId}/${Date.now()}-${safeName}`
     const { error: uploadError } = await supabase.storage.from('pg-images').upload(path, file)
     if (uploadError) {
-      setError('Image upload failed. Make sure the "pg-images" storage bucket exists (see README).')
+      setError(`Image upload failed: ${uploadError.message}. Run the latest supabase/schema.sql in the Supabase SQL Editor to create the pg-images bucket and its upload policy.`)
       setUploading(false)
-      return
+      return false
     }
     const { data: urlData } = supabase.storage.from('pg-images').getPublicUrl(path)
-    const { data: imgRow } = await supabase
+    const { data: imgRow, error: imageRowError } = await supabase
       .from('pg_images')
-      .insert({ pg_id: pgId, url: urlData.publicUrl, sort_order: images.length })
+      .insert({ pg_id: pgId, url: urlData.publicUrl, sort_order: sortOrder })
       .select()
       .single()
-    if (imgRow) setImages((prev) => [...prev, imgRow as PgImage])
+    if (imageRowError || !imgRow) {
+      setError(imageRowError?.message || 'Image uploaded, but it could not be linked to this PG.')
+      setUploading(false)
+      return false
+    }
+    setImages((prev) => [...prev, imgRow as PgImage])
     setUploading(false)
+    return true
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    const validFloorSeats = floorSeats.filter(({ floorNumber, seats }) => floorNumber !== '' || seats !== '')
+    const validFloorSeats = isEdit ? [] : floorSeats.filter(({ floorNumber, seats }) => floorNumber !== '' || seats !== '')
     const floorNumbers = validFloorSeats.map(({ floorNumber }) => Number(floorNumber))
     if (!name || !area || !location || !ownerName) {
       setError('PG name, owner name, area, and location are required.')
@@ -171,7 +186,13 @@ export default function AddEditPG() {
           return
         }
       }
-      if (newImage) await handleImageUpload(newImage, newPg.id)
+      for (const [index, image] of newImages.entries()) {
+        const uploaded = await handleImageUpload(image, newPg.id, images.length + index)
+        if (!uploaded) {
+          setSaving(false)
+          return
+        }
+      }
     }
 
     // Sync amenities: clear then re-insert selected set (simple + reliable for a small list)
@@ -257,8 +278,8 @@ export default function AddEditPG() {
           </label>
 
           {!isEdit && <div>
-            <label className="label">Seats available by floor</label>
-            <p className="text-xs text-ink-500 mb-3">Add each floor and the number of seats currently available there.</p>
+            <label className="label">Seats available by floor <span className="font-normal text-ink-400">(optional)</span></label>
+            <p className="text-xs text-ink-500 mb-3">Add floor-wise availability only if you have those details now. You can manage rooms and beds later.</p>
             <div className="space-y-2">
               {floorSeats.map((entry, index) => (
                 <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
@@ -274,7 +295,7 @@ export default function AddEditPG() {
                 </div>
               ))}
             </div>
-            <button type="button" className="btn-secondary btn-sm mt-3" onClick={() => setFloorSeats((entries) => [...entries, { floorNumber: String(entries.length + 1), seats: '' }])}>Add floor</button>
+            <button type="button" className="btn-secondary btn-sm mt-3" onClick={() => setFloorSeats((entries) => [...entries, { floorNumber: String(entries.length + 1), seats: '' }])}>Add floor availability</button>
           </div>}
 
           <div>
@@ -294,16 +315,24 @@ export default function AddEditPG() {
           </div>
 
           <div>
-            <label className="label">PG photo</label>
+            <label className="label">PG photos</label>
+            <p className="mb-2 text-xs text-ink-500">You can choose multiple JPG, PNG, or WebP photos (up to 5 MB each).</p>
             <div className="flex flex-wrap gap-3 mb-3">
               {images.map((img) => <img key={img.id} src={img.url} className="w-20 h-20 object-cover rounded-card border border-ink-100" />)}
-              {newImage && <img src={URL.createObjectURL(newImage)} className="w-20 h-20 object-cover rounded-card border border-ink-100" />}
+              {newImages.map((image) => <img key={`${image.name}-${image.lastModified}`} src={URL.createObjectURL(image)} className="w-20 h-20 object-cover rounded-card border border-ink-100" />)}
             </div>
-            <input type="file" accept="image/*" disabled={uploading} onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (!file) return
-              if (isEdit && id) handleImageUpload(file, id)
-              else setNewImage(file)
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading} onChange={async (e) => {
+              const files = Array.from(e.target.files ?? [])
+              if (!files.length) return
+              if (isEdit && id) {
+                for (const [index, file] of files.entries()) {
+                  const uploaded = await handleImageUpload(file, id, images.length + index)
+                  if (!uploaded) break
+                }
+              } else {
+                setNewImages((current) => [...current, ...files])
+              }
+              e.target.value = ''
             }} className="text-sm" />
             {uploading && <p className="text-xs text-ink-400 mt-1">Uploading...</p>}
           </div>

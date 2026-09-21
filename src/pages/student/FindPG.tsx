@@ -79,20 +79,20 @@ export default function FindPG() {
   return (
     <div>
       <Navbar />
-      <div className="container-page py-8">
+      <div className="container-page max-w-5xl py-8 sm:py-10">
         <h1 className="text-2xl font-semibold text-ink-900 mb-1">Find a PG</h1>
         <p className="text-sm text-ink-500 mb-6">Browse verified PGs in Guntur.</p>
 
-        <form onSubmit={handleFilter} className="card p-4 mb-8 grid sm:grid-cols-5 gap-3 items-end">
-          <div className="sm:col-span-2">
+        <form onSubmit={handleFilter} className="card mb-8 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4 sm:p-5">
+          <div>
             <label className="label">Area</label>
             <input className="input" value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Brodipet" />
           </div>
-          <div className="sm:col-span-2">
+          <div>
             <label className="label">Near college</label>
             <input className="input" value={college} onChange={(e) => setCollege(e.target.value)} placeholder="e.g. JKC College" />
           </div>
-          <div>
+          <div className="lg:col-span-1">
             <label className="label">Sharing</label>
             <select className="input" value={sharing} onChange={(e) => setSharing(e.target.value)}>
               <option value="">Any</option>
@@ -101,8 +101,8 @@ export default function FindPG() {
               ))}
             </select>
           </div>
-          <div className="sm:col-span-5 flex items-end gap-3">
-            <div className="w-40">
+          <div className="flex items-end gap-3 sm:col-span-2 lg:col-span-1">
+            <div className="min-w-0 flex-1">
               <label className="label">AC / Non-AC</label>
               <select className="input" value={ac} onChange={(e) => setAc(e.target.value)}>
                 <option value="">Any</option>
@@ -125,7 +125,7 @@ export default function FindPG() {
           </div>
         )}
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {pgs.map((pg) => (
             <PgCard key={pg.id} pg={pg} />
           ))}

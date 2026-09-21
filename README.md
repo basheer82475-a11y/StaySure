@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # StaySure
 
 **Find a place. Check availability. Stay sure.**
@@ -58,14 +57,11 @@ Dashboard → **Authentication → Providers → Email** → turn off **Confirm 
 
 (The seeded demo accounts already have their email pre-confirmed either way.)
 
-## 6. Enable image uploads (optional but recommended)
+## 6. Enable image uploads
 
-PG partners can upload PG photos. This needs a public Storage bucket:
+PG photo uploads are configured automatically when you run the latest `supabase/schema.sql`. It creates the public `pg-images` bucket, allows JPG/PNG/WebP files up to 5 MB, and permits partner accounts to upload them.
 
-1. Dashboard → **Storage → New bucket**
-2. Name it exactly `pg-images`, and toggle **Public bucket** on.
-
-If you skip this, everything else still works — partners just won't be able to upload new images (the seeded demo PGs already have stock photos).
+If your project was set up before this change, re-run `supabase/schema.sql` in the Supabase SQL Editor. You do not need to create the bucket manually.
 
 ## 7. Run it
 
@@ -117,6 +113,3 @@ supabase/
 - Admin accounts are never created through the public Register form — see `supabase/seed.sql` PART A, or promote a user manually with `update profiles set role = 'admin' where email = '...';`.
 - All frontend Supabase calls use the anon key; every table has RLS enabled, so access control lives in the database, not just the UI.
 - The codebase intentionally keeps one component/page per concern so it's easy for a small student team to extend after the hackathon.
-=======
-# StaySure
->>>>>>> 5a0b7220abe6f52a5f88f1e820540d18a91116a5
