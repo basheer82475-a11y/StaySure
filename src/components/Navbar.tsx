@@ -25,10 +25,16 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-8 text-sm text-ink-600">
-          <Link to="/" className="hover:text-ink-900">Home</Link>
-          <Link to="/find-pg" className="hover:text-ink-900">Find PG</Link>
-          <a href="/#how-it-works" className="hover:text-ink-900">How It Works</a>
-          <a href="/#about" className="hover:text-ink-900">About</a>
+          {profile?.role === 'admin' ? (
+            <Link to="/admin/dashboard" className="hover:text-ink-900">Dashboard</Link>
+          ) : (
+            <>
+              <Link to="/" className="hover:text-ink-900">Home</Link>
+              <Link to="/find-pg" className="hover:text-ink-900">Find PG</Link>
+              <a href="/#how-it-works" className="hover:text-ink-900">How It Works</a>
+              <a href="/#about" className="hover:text-ink-900">About</a>
+            </>
+          )}
         </nav>
 
         <div className="flex items-center gap-3">

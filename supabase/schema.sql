@@ -56,6 +56,8 @@ create table if not exists pgs (
   name text not null,
   area text not null,
   location text not null,
+  full_address text,
+  pincode text,
   nearby_college text,
   distance_from_college text,
   description text,
@@ -64,6 +66,14 @@ create table if not exists pgs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Added after the initial release. These statements make existing databases
+-- compatible too, without affecting their existing listings.
+alter table pgs add column if not exists full_address text;
+alter table pgs add column if not exists pincode text;
+
+-- Keep existing installations aligned with the submission-and-approval flow.
+alter table pgs alter column status set default 'pending';
 
 create table if not exists pg_images (
   id uuid primary key default gen_random_uuid(),

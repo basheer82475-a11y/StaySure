@@ -72,23 +72,23 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Full name</label>
-            <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required />
           </div>
           <div>
             <label className="label">Email</label>
-            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
           </div>
           <div>
             <label className="label">Phone number</label>
-            <input className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" required />
           </div>
           <div>
             <label className="label">Password</label>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={6} required />
           </div>
           <div>
             <label className="label">Confirm password</label>
-            <input className="input" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            <input className="input" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" minLength={6} required />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

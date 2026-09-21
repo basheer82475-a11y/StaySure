@@ -1,39 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, ListChecks, BedDouble, ScanSearch } from 'lucide-react'
 import Navbar from '@/components/Navbar'
-import PgCard from '@/components/PgCard'
-import { supabase } from '@/lib/supabase'
-import { PgWithExtras } from '@/types'
 
 export default function Landing() {
   const navigate = useNavigate()
   const [area, setArea] = useState('')
   const [college, setCollege] = useState('')
-  const [featured, setFeatured] = useState<PgWithExtras[]>([])
-
-  useEffect(() => {
-    async function loadFeatured() {
-      const { data } = await supabase
-        .from('pgs')
-        .select('*, pg_images(*), pg_amenities(amenity:amenities(*))')
-        .eq('status', 'approved')
-        .limit(3)
-      if (!data) return
-
-      const ids = data.map((pg) => pg.id)
-      const { data: counts } = await supabase.from('pg_available_beds').select('*').in('pg_id', ids)
-      const countMap = new Map((counts ?? []).map((c) => [c.pg_id, c.available_beds_count]))
-
-      setFeatured(
-        (data as unknown as PgWithExtras[]).map((pg) => ({
-          ...pg,
-          available_beds_count: countMap.get(pg.id) ?? 0,
-        }))
-      )
-    }
-    loadFeatured()
-  }, [])
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -85,17 +58,6 @@ export default function Landing() {
           <Step icon={<BedDouble size={20} />} title="Request Your Bed" desc="Send a request and get confirmation from the PG partner." />
         </div>
       </section>
-
-      {featured.length > 0 && (
-        <section id="about" className="container-page py-14 border-t border-ink-100">
-          <h2 className="text-xl font-semibold text-ink-900 mb-6">Popular PGs in Guntur</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featured.map((pg) => (
-              <PgCard key={pg.id} pg={pg} />
-            ))}
-          </div>
-        </section>
-      )}
 
       <footer className="border-t border-ink-100 py-8 text-center text-xs text-ink-400">
         StaySure — Find a place. Check availability. Stay sure.

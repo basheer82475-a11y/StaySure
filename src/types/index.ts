@@ -26,6 +26,8 @@ export interface Pg {
   name: string
   area: string
   location: string
+  full_address: string | null
+  pincode: string | null
   nearby_college: string | null
   distance_from_college: string | null
   description: string | null

@@ -35,12 +35,20 @@ export default function Login() {
   }
 
   async function handleForgotPassword() {
+    setError(null)
+    setResetSent(false)
     if (!email) {
       setError('Enter your email above first, then click "Forgot password".')
       return
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
-    if (!error) setResetSent(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    })
+    if (error) {
+      setError('Could not send a password reset email. Please try again.')
+      return
+    }
+    setResetSent(true)
   }
 
   useEffect(() => {
@@ -57,11 +65,11 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Email</label>
-            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
           </div>
           <div>
             <label className="label">Password</label>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
