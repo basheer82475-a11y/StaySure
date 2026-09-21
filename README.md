@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # StaySure
 
 **Find a place. Check availability. Stay sure.**
@@ -116,3 +117,6 @@ supabase/
 - Admin accounts are never created through the public Register form — see `supabase/seed.sql` PART A, or promote a user manually with `update profiles set role = 'admin' where email = '...';`.
 - All frontend Supabase calls use the anon key; every table has RLS enabled, so access control lives in the database, not just the UI.
 - The codebase intentionally keeps one component/page per concern so it's easy for a small student team to extend after the hackathon.
+=======
+# StaySure
+>>>>>>> 5a0b7220abe6f52a5f88f1e820540d18a91116a5
